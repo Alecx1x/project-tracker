@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Tracker</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel-2:#1c2230; --border:#2a3140;
+    --txt:#e6edf3; --muted:#8b96a5; --accent:#4f8cff; --accent-2:#7c5cff;
+    --green:#2ea043; --amber:#d29922; --red:#f85149; --grey:#6e7681;
+    --chip:#222a37;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--txt);line-height:1.45}
+  header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,#0e1116,#0e1116ee);
+    border-bottom:1px solid var(--border);backdrop-filter:blur(6px)}
+  .bar{max-width:1200px;margin:0 auto;padding:16px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .logo{font-size:20px;font-weight:700;letter-spacing:-.3px;display:flex;align-items:center;gap:9px}
+  .logo .dot{width:11px;height:11px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+  .spacer{flex:1}
+  .stats{display:flex;gap:18px;color:var(--muted);font-size:13px;flex-wrap:wrap}
+  .stats b{color:var(--txt)}
+  button{font:inherit;cursor:pointer;border:1px solid var(--border);background:var(--panel-2);
+    color:var(--txt);padding:8px 14px;border-radius:8px;transition:.15s}
+  button:hover{border-color:var(--accent);background:#222b3d}
+  button.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;color:#fff;font-weight:600}
+  button.primary:hover{filter:brightness(1.08)}
+  button.ghost{background:transparent}
+  button.danger:hover{border-color:var(--red);color:var(--red)}
+  .icon-btn{padding:5px 9px;font-size:13px;line-height:1}
+  main{max-width:1200px;margin:0 auto;padding:22px}
+  .projects{display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+  .card-top{padding:16px 18px;border-bottom:1px solid var(--border);background:var(--panel-2)}
+  .card-top .row1{display:flex;align-items:center;gap:10px}
+  .ptitle{font-size:17px;font-weight:700;margin:0;flex:1;display:flex;align-items:center;gap:9px}
+  .swatch{width:12px;height:12px;border-radius:4px;flex:none}
+  .pdesc{color:var(--muted);font-size:13px;margin:8px 0 0}
+  .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center}
+  .badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px}
+  .b-live{background:#13351f;color:#3fb950}.b-active{background:#102a47;color:#58a6ff}
+  .b-progress{background:#3a2e10;color:#e3b341}.b-paused{background:#2a2f38;color:#9aa5b3}
+  .link{color:var(--accent);font-size:12px;text-decoration:none;border:1px solid var(--border);padding:3px 9px;border-radius:20px}
+  .link:hover{border-color:var(--accent)}
+  .path{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;color:var(--muted);
+    margin-top:9px;word-break:break-all}
+  .tools{padding:14px 18px 6px;flex:1}
+  .cat{margin-bottom:14px}
+  .cat-h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);
+    margin:0 0 8px;display:flex;align-items:center;gap:7px}
+  .cat-h .ico{font-size:13px}
+  .toolrow{display:flex;flex-wrap:wrap;gap:7px}
+  .tool{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid var(--border);
+    padding:5px 10px;border-radius:8px;font-size:12.5px;position:relative;cursor:default}
+  .tool .x{color:var(--grey);font-size:13px;cursor:pointer;margin-left:2px;line-height:1}
+  .tool .x:hover{color:var(--red)}
+  .tool a{color:var(--accent);text-decoration:none}
+  .tool .tdot{width:7px;height:7px;border-radius:50%;flex:none}
+  .add-tool{background:transparent;border:1px dashed var(--border);color:var(--muted);padding:5px 10px;
+    border-radius:8px;font-size:12.5px}
+  .add-tool:hover{border-color:var(--accent);color:var(--accent)}
+  .card-foot{padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+  .empty{color:var(--muted);font-size:13px;padding:6px 0 12px;font-style:italic}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:#0008;backdrop-filter:blur(3px);display:none;
+    align-items:center;justify-content:center;z-index:50;padding:20px}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;width:100%;max-width:460px;
+    padding:22px;max-height:90vh;overflow:auto}
+  .modal h2{margin:0 0 16px;font-size:18px}
+  label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px;font-weight:600}
+  input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--txt);
+    padding:9px 11px;border-radius:8px;font:inherit}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+  textarea{resize:vertical;min-height:60px}
+  .modal-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+  .swatches{display:flex;gap:8px;flex-wrap:wrap}
+  .sw{width:26px;height:26px;border-radius:7px;cursor:pointer;border:2px solid transparent}
+  .sw.sel{border-color:#fff}
+  .hint{font-size:11px;color:var(--muted);margin-top:4px}
+  .footer-note{text-align:center;color:var(--grey);font-size:12px;padding:30px 0 10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="logo"><span class="dot"></span> Project Tracker</div>
+    <div class="spacer"></div>
+    <div class="stats" id="stats"></div>
+    <button class="ghost icon-btn" onclick="exportData()" title="Export JSON backup">⬇ Export</button>
+    <button class="ghost icon-btn" onclick="document.getElementById('importFile').click()" title="Import JSON backup">⬆ Import</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+    <button class="primary" onclick="openProject()">+ New Project</button>
+  </div>
+</header>
+<main>
+  <div class="projects" id="projects"></div>
+  <div class="footer-note">Saved locally in your browser • <span id="path"></span></div>
+</main>
+
+<!-- Project modal -->
+<div class="overlay" id="projOverlay">
+  <div class="modal">
+    <h2 id="projModalTitle">New Project</h2>
+    <input type="hidden" id="projId">
+    <label>Name</label>
+    <input id="projName" placeholder="e.g. Anpi">
+    <label>Description</label>
+    <textarea id="projDesc" placeholder="What is this project?"></textarea>
+    <label>Status</label>
+    <select id="projStatus">
+      <option value="live">Live</option>
+      <option value="active">Active</option>
+      <option value="progress">In Progress</option>
+      <option value="paused">Paused</option>
+    </select>
+    <label>Local path</label>
+    <input id="projPath" placeholder="C:\Users\socia\...">
+    <label>Live URL (optional)</label>
+    <input id="projUrl" placeholder="https://...">
+    <label>Color</label>
+    <div class="swatches" id="swatches"></div>
+    <div class="modal-foot">
+      <button class="danger" id="projDelete" onclick="deleteProject()" style="margin-right:auto;display:none">Delete</button>
+      <button class="ghost" onclick="closeOverlay('projOverlay')">Cancel</button>
+      <button class="primary" onclick="saveProject()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tool modal -->
+<div class="overlay" id="toolOverlay">
+  <div class="modal">
+    <h2>Add Tool</h2>
+    <input type="hidden" id="toolProjId">
+    <label>Tool / service name</label>
+    <input id="toolName" placeholder="e.g. Cloudflare D1">
+    <label>Category</label>
+    <select id="toolCat">
+      <option>Hosting / Deploy</option>
+      <option>Framework / Language</option>
+      <option>Database / Storage</option>
+      <option>Auth</option>
+      <option>API / Integration</option>
+      <option>Build / Tooling</option>
+      <option>Design / Assets</option>
+      <option>Analytics</option>
+      <option>Other</option>
+    </select>
+    <label>Status</label>
+    <select id="toolStatus">
+      <option value="in-use">In use</option>
+      <option value="setup">Setting up</option>
+      <option value="planned">Planned</option>
+      <option value="deprecated">Deprecated</option>
+    </select>
+    <label>Link / dashboard (optional)</label>
+    <input id="toolUrl" placeholder="https://...">
+    <div class="modal-foot">
+      <button class="ghost" onclick="closeOverlay('toolOverlay')">Cancel</button>
+      <button class="primary" onclick="saveTool()">Add</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS=["#4f8cff","#7c5cff","#2ea043","#d29922","#f85149","#16b8a6","#e056fd","#ff8c42"];
+const STATUS_BADGE={live:["b-live","Live"],active:["b-active","Active"],progress:["b-progress","In Progress"],paused:["b-paused","Paused"]};
+const TOOL_DOT={"in-use":"#2ea043","setup":"#d29922","planned":"#58a6ff","deprecated":"#6e7681"};
+const CAT_ICON={"Hosting / Deploy":"☁️","Framework / Language":"⚙️","Database / Storage":"🗄️","Auth":"🔐","API / Integration":"🔌","Build / Tooling":"🛠️","Design / Assets":"🎨","Analytics":"📊","Other":"📦"};
+const KEY="project-tracker-v1";
+
+const SEED=[
+  {id:"anpi",name:"Anpi",desc:"Vanilla-JS Japanese learning app — flashcards, game, leaderboards, Learn.",
+   status:"active",path:"C:\\Users\\socia\\kana-flashcards",url:"",color:"#e056fd",
+   tools:[
+     {name:"Cloudflare Pages",cat:"Hosting / Deploy",status:"in-use",url:""},
+     {name:"Vanilla JS",cat:"Framework / Language",status:"in-use",url:""},
+     {name:"HTML / CSS",cat:"Framework / Language",status:"in-use",url:""},
+     {name:"Wrangler",cat:"Build / Tooling",status:"in-use",url:""},
+   ]},
+  {id:"anpiespicks",name:"AnpiesPicks",desc:"Sportsbook/DFS referral affiliate hub — geo-router, per-person tracking, follow-up cockpit, /me bio page.",
+   status:"live",path:"C:\\Users\\socia\\betlink",url:"https://join.anpieo7.workers.dev",color:"#2ea043",
+   tools:[
+     {name:"Cloudflare Workers",cat:"Hosting / Deploy",status:"in-use",url:"https://join.anpieo7.workers.dev"},
+     {name:"Cloudflare D1",cat:"Database / Storage",status:"in-use",url:""},
+     {name:"Wrangler",cat:"Build / Tooling",status:"in-use",url:""},
+     {name:"JavaScript",cat:"Framework / Language",status:"in-use",url:""},
+   ]},
+  {id:"dropship",name:"dropship-command",desc:"Next.js dropshipping app — Phase 0 complete (auth + schema). Next: Phase 1.1 crypto.",
+   status:"progress",path:"C:\\Users\\socia\\dropship-command",url:"",color:"#4f8cff",
+   tools:[
+     {name:"Next.js",cat:"Framework / Language",status:"in-use",url:""},
+     {name:"NextAuth v5",cat:"Auth",status:"in-use",url:""},
+     {name:"Prisma",cat:"Database / Storage",status:"in-use",url:""},
+     {name:"Neon Postgres",cat:"Database / Storage",status:"in-use",url:"https://neon.tech"},
+     {name:"AES-256-GCM crypto",cat:"Build / Tooling",status:"planned",url:""},
+   ]},
+];
+
+let data=load();
+function load(){try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r);}catch(e){}return structuredClone(SEED);}
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render();}
+function uid(){return Math.random().toString(36).slice(2,9);}
+
+let selColor=COLORS[0];
+
+function render(){
+  const root=document.getElementById("projects");
+  root.innerHTML="";
+  let toolCount=0;
+  data.forEach(p=>{
+    toolCount+=p.tools.length;
+    const card=document.createElement("div");card.className="card";
+    const [bcls,blbl]=STATUS_BADGE[p.status]||STATUS_BADGE.active;
+    // group tools by category
+    const cats={};
+    p.tools.forEach((t,i)=>{(cats[t.cat]=cats[t.cat]||[]).push({...t,_i:i});});
+    let toolsHtml="";
+    Object.keys(cats).forEach(cat=>{
+      toolsHtml+=`<div class="cat"><p class="cat-h"><span class="ico">${CAT_ICON[cat]||"📦"}</span>${cat}</p><div class="toolrow">`;
+      cats[cat].forEach(t=>{
+        const dot=TOOL_DOT[t.status]||"#6e7681";
+        const nm=t.url?`<a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.name)}</a>`:esc(t.name);
+        toolsHtml+=`<span class="tool" title="${t.status}"><span class="tdot" style="background:${dot}"></span>${nm}<span class="x" onclick="removeTool('${p.id}',${t._i})">×</span></span>`;
+      });
+      toolsHtml+=`</div></div>`;
+    });
+    if(p.tools.length===0)toolsHtml=`<div class="empty">No tools yet — add the stack for this project.</div>`;
+
+    card.innerHTML=`
+      <div class="card-top">
+        <div class="row1">
+          <h3 class="ptitle"><span class="swatch" style="background:${p.color}"></span>${esc(p.name)}</h3>
+          <span class="badge ${bcls}">${blbl}</span>
+        </div>
+        ${p.desc?`<p class="pdesc">${esc(p.desc)}</p>`:""}
+        <div class="meta">
+          ${p.url?`<a class="link" href="${esc(p.url)}" target="_blank" rel="noopener">↗ Live site</a>`:""}
+        </div>
+        ${p.path?`<div class="path">📁 ${esc(p.path)}</div>`:""}
+      </div>
+      <div class="tools">${toolsHtml}
+        <button class="add-tool" onclick="openTool('${p.id}')">+ Add tool</button>
+      </div>
+      <div class="card-foot">
+        <button class="ghost icon-btn" onclick="openProject('${p.id}')">✎ Edit</button>
+      </div>`;
+    root.appendChild(card);
+  });
+  document.getElementById("stats").innerHTML=
+    `<span><b>${data.length}</b> projects</span><span><b>${toolCount}</b> tools tracked</span>`;
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+// ---- Project modal ----
+function openProject(id){
+  const ov=document.getElementById("projOverlay");
+  const del=document.getElementById("projDelete");
+  buildSwatches();
+  if(id){
+    const p=data.find(x=>x.id===id);
+    document.getElementById("projModalTitle").textContent="Edit Project";
+    document.getElementById("projId").value=p.id;
+    document.getElementById("projName").value=p.name;
+    document.getElementById("projDesc").value=p.desc||"";
+    document.getElementById("projStatus").value=p.status;
+    document.getElementById("projPath").value=p.path||"";
+    document.getElementById("projUrl").value=p.url||"";
+    selColor=p.color;del.style.display="inline-block";
+  }else{
+    document.getElementById("projModalTitle").textContent="New Project";
+    ["projId","projName","projDesc","projPath","projUrl"].forEach(i=>document.getElementById(i).value="");
+    document.getElementById("projStatus").value="progress";
+    selColor=COLORS[data.length%COLORS.length];del.style.display="none";
+  }
+  buildSwatches();
+  ov.classList.add("show");
+}
+function buildSwatches(){
+  const c=document.getElementById("swatches");c.innerHTML="";
+  COLORS.forEach(col=>{
+    const s=document.createElement("div");s.className="sw"+(col===selColor?" sel":"");
+    s.style.background=col;s.onclick=()=>{selColor=col;buildSwatches();};
+    c.appendChild(s);
+  });
+}
+function saveProject(){
+  const name=document.getElementById("projName").value.trim();
+  if(!name){alert("Name required");return;}
+  const id=document.getElementById("projId").value;
+  const obj={name,desc:document.getElementById("projDesc").value.trim(),
+    status:document.getElementById("projStatus").value,
+    path:document.getElementById("projPath").value.trim(),
+    url:document.getElementById("projUrl").value.trim(),color:selColor};
+  if(id){Object.assign(data.find(x=>x.id===id),obj);}
+  else{data.push({id:uid(),tools:[],...obj});}
+  closeOverlay("projOverlay");save();
+}
+function deleteProject(){
+  const id=document.getElementById("projId").value;
+  if(confirm("Delete this project and its tools?")){
+    data=data.filter(x=>x.id!==id);closeOverlay("projOverlay");save();
+  }
+}
+
+// ---- Tool modal ----
+function openTool(projId){
+  document.getElementById("toolProjId").value=projId;
+  document.getElementById("toolName").value="";
+  document.getElementById("toolUrl").value="";
+  document.getElementById("toolCat").value="Hosting / Deploy";
+  document.getElementById("toolStatus").value="in-use";
+  document.getElementById("toolOverlay").classList.add("show");
+  setTimeout(()=>document.getElementById("toolName").focus(),50);
+}
+function saveTool(){
+  const name=document.getElementById("toolName").value.trim();
+  if(!name){alert("Tool name required");return;}
+  const p=data.find(x=>x.id===document.getElementById("toolProjId").value);
+  p.tools.push({name,cat:document.getElementById("toolCat").value,
+    status:document.getElementById("toolStatus").value,
+    url:document.getElementById("toolUrl").value.trim()});
+  closeOverlay("toolOverlay");save();
+}
+function removeTool(projId,idx){
+  const p=data.find(x=>x.id===projId);
+  if(confirm("Remove "+p.tools[idx].name+"?")){p.tools.splice(idx,1);save();}
+}
+function closeOverlay(id){document.getElementById(id).classList.remove("show");}
+
+// ---- Import / Export ----
+function exportData(){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="project-tracker-backup.json";a.click();
+}
+function importData(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(Array.isArray(d)){data=d;save();}else alert("Invalid file");}catch(err){alert("Could not parse file");}};
+  r.readAsText(f);e.target.value="";
+}
+// close modal on overlay click / esc
+document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{if(e.target===o)o.classList.remove("show");}));
+document.addEventListener("keydown",e=>{if(e.key==="Escape")document.querySelectorAll(".overlay").forEach(o=>o.classList.remove("show"));});
+
+render();
+</script>
+</body>
+</html>
