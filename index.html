@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Project Tracker</title>
+<!-- Inline SVG favicon: same ">_" prompt as Terminal Bridge, but a LIGHT tile (vs the bridge's dark one) with the tracker's blue→purple accent. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23eaf0fb'/%3E%3Cpath d='M7 10l5 4-5 4' fill='none' stroke='%234f8cff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='15' y1='21' x2='24' y2='21' stroke='%237c5cff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
   :root{
     --bg:#0e1116; --panel:#161b22; --panel-2:#1c2230; --border:#2a3140;
@@ -61,7 +63,23 @@
   .add-tool{background:transparent;border:1px dashed var(--border);color:var(--muted);padding:5px 10px;
     border-radius:8px;font-size:12.5px}
   .add-tool:hover{border-color:var(--accent);color:var(--accent)}
-  .card-foot{padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+  .card-foot{padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+  .launch{font-weight:700;border:none;color:#fff;flex:1;min-width:120px;justify-content:center}
+  .launch.sess{background:linear-gradient(135deg,#2ea043,#1f7a33)}
+  .launch.use{background:linear-gradient(135deg,#4f8cff,#7c5cff)}
+  .launch:hover{filter:brightness(1.1)}
+  .launch:disabled{opacity:.6;cursor:progress;filter:none}
+  .card-foot .icon-btn{flex:none}
+  .banner{display:none;max-width:1200px;margin:0 auto 0;padding:12px 22px;background:#3a2e10;color:#e3b341;
+    font-size:13px;border-bottom:1px solid var(--border)}
+  .banner.show{display:block}
+  .banner code{background:#0006;padding:2px 6px;border-radius:5px;color:#f0d58a}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(140%);z-index:80;
+    max-width:min(560px,92vw);background:var(--panel-2);border:1px solid var(--border);border-left:4px solid var(--accent);
+    color:var(--txt);padding:13px 18px;border-radius:11px;box-shadow:0 10px 30px #000a;font-size:14px;
+    transition:transform .28s cubic-bezier(.2,.9,.3,1.2);line-height:1.4}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  .toast.ok{border-left-color:var(--green)} .toast.err{border-left-color:var(--red)}
   .empty{color:var(--muted);font-size:13px;padding:6px 0 12px;font-style:italic}
   /* modal */
   .overlay{position:fixed;inset:0;background:#0008;backdrop-filter:blur(3px);display:none;
@@ -89,12 +107,14 @@
     <div class="logo"><span class="dot"></span> Project Tracker</div>
     <div class="spacer"></div>
     <div class="stats" id="stats"></div>
+    <button class="ghost icon-btn" onclick="syncDefaults()" title="Add any missing built-in projects (won't touch your edits)">↻ Sync defaults</button>
     <button class="ghost icon-btn" onclick="exportData()" title="Export JSON backup">⬇ Export</button>
     <button class="ghost icon-btn" onclick="document.getElementById('importFile').click()" title="Import JSON backup">⬆ Import</button>
     <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
     <button class="primary" onclick="openProject()">+ New Project</button>
   </div>
 </header>
+<div class="banner" id="backendBanner">⚠ Launcher not running — the <b>▶ Session</b> / <b>🚀 Use</b> buttons need it. Double-click <code>Launch Project Tracker.bat</code> in the project-tracker folder, then reload.</div>
 <main>
   <div class="projects" id="projects"></div>
   <div class="footer-note">Saved locally in your browser • <span id="path"></span></div>
@@ -173,31 +193,42 @@ const CAT_ICON={"Hosting / Deploy":"☁️","Framework / Language":"⚙️","Dat
 const KEY="project-tracker-v1";
 
 const SEED=[
-  {id:"anpi",name:"Anpi",desc:"Vanilla-JS Japanese learning app — flashcards, game, leaderboards, Learn.",
-   status:"active",path:"C:\\Users\\socia\\kana-flashcards",url:"",color:"#e056fd",
-   tools:[
-     {name:"Cloudflare Pages",cat:"Hosting / Deploy",status:"in-use",url:""},
-     {name:"Vanilla JS",cat:"Framework / Language",status:"in-use",url:""},
-     {name:"HTML / CSS",cat:"Framework / Language",status:"in-use",url:""},
-     {name:"Wrangler",cat:"Build / Tooling",status:"in-use",url:""},
-   ]},
+  {id:"anpi",name:"Anpi",desc:"Vanilla-JS Japanese learning app — flashcards, game, leaderboards, Guided Learning, Kanji Road.",
+   status:"live",path:"C:\\Users\\socia\\kana-flashcards",url:"https://anpi-learning.pages.dev",color:"#e056fd",
+   tools:[{name:"Cloudflare Pages",cat:"Hosting / Deploy",status:"in-use",url:""},{name:"Vanilla JS",cat:"Framework / Language",status:"in-use",url:""},{name:"Supabase",cat:"Database / Storage",status:"in-use",url:""}]},
   {id:"anpiespicks",name:"AnpiesPicks",desc:"Sportsbook/DFS referral affiliate hub — geo-router, per-person tracking, follow-up cockpit, /me bio page.",
    status:"live",path:"C:\\Users\\socia\\betlink",url:"https://join.anpieo7.workers.dev",color:"#2ea043",
-   tools:[
-     {name:"Cloudflare Workers",cat:"Hosting / Deploy",status:"in-use",url:"https://join.anpieo7.workers.dev"},
-     {name:"Cloudflare D1",cat:"Database / Storage",status:"in-use",url:""},
-     {name:"Wrangler",cat:"Build / Tooling",status:"in-use",url:""},
-     {name:"JavaScript",cat:"Framework / Language",status:"in-use",url:""},
-   ]},
-  {id:"dropship",name:"dropship-command",desc:"Next.js dropshipping app — Phase 0 complete (auth + schema). Next: Phase 1.1 crypto.",
+   tools:[{name:"Cloudflare Workers",cat:"Hosting / Deploy",status:"in-use",url:"https://join.anpieo7.workers.dev"},{name:"Cloudflare D1",cat:"Database / Storage",status:"in-use",url:""},{name:"Hono",cat:"Framework / Language",status:"in-use",url:""}]},
+  {id:"dropship",name:"dropship-command",desc:"Multi-store dropshipping command center (Next.js + AI). Phases 0–4 done; Phase 5 partial.",
    status:"progress",path:"C:\\Users\\socia\\dropship-command",url:"",color:"#4f8cff",
-   tools:[
-     {name:"Next.js",cat:"Framework / Language",status:"in-use",url:""},
-     {name:"NextAuth v5",cat:"Auth",status:"in-use",url:""},
-     {name:"Prisma",cat:"Database / Storage",status:"in-use",url:""},
-     {name:"Neon Postgres",cat:"Database / Storage",status:"in-use",url:"https://neon.tech"},
-     {name:"AES-256-GCM crypto",cat:"Build / Tooling",status:"planned",url:""},
-   ]},
+   tools:[{name:"Next.js 16",cat:"Framework / Language",status:"in-use",url:""},{name:"Prisma + Neon",cat:"Database / Storage",status:"in-use",url:""},{name:"BullMQ / Upstash",cat:"Build / Tooling",status:"in-use",url:""},{name:"Anthropic API",cat:"API / Integration",status:"in-use",url:""}]},
+  {id:"terminalbridge",name:"Terminal Bridge",desc:"Drive PC terminal / Claude Code sessions from a phone or TV-connected PC over a tunnel. The host for everything.",
+   status:"live",path:"C:\\Users\\socia\\terminal-bridge",url:"",color:"#16b8a6",
+   tools:[{name:"Node + ws",cat:"Framework / Language",status:"in-use",url:""},{name:"node-pty",cat:"Build / Tooling",status:"in-use",url:""},{name:"cloudflared",cat:"Hosting / Deploy",status:"in-use",url:""}]},
+  {id:"fightsync",name:"FightSync",desc:"Automates the Thrill of the Fight 2 YouTube workflow — sync, composite, subtitles, replays → final.mp4.",
+   status:"active",path:"C:\\Users\\socia\\fight-sync",url:"",color:"#ff8c42",
+   tools:[{name:"FastAPI",cat:"Framework / Language",status:"in-use",url:""},{name:"ffmpeg",cat:"Build / Tooling",status:"in-use",url:""},{name:"faster-whisper",cat:"API / Integration",status:"in-use",url:""},{name:"cloudflared",cat:"Hosting / Deploy",status:"in-use",url:""}]},
+  {id:"vnstudio",name:"VN Studio",desc:"Toolkit + beginner guides to build an anime VN 'story mode' for the Japanese-learning site.",
+   status:"active",path:"C:\\Users\\socia\\VN-Tools",url:"",color:"#7c5cff",
+   tools:[{name:"ComfyUI",cat:"Design / Assets",status:"in-use",url:""},{name:"Ren'Py",cat:"Build / Tooling",status:"in-use",url:""},{name:"Blender / VRoid",cat:"Design / Assets",status:"in-use",url:""}]},
+  {id:"edgefinder",name:"Edge Finder",desc:"Local +EV tool: your weighted model vs live sportsbook odds to surface betting edges.",
+   status:"progress",path:"C:\\Users\\socia\\edge-finder",url:"",color:"#d29922",
+   tools:[{name:"Python / Flask",cat:"Framework / Language",status:"in-use",url:""},{name:"The Odds API",cat:"API / Integration",status:"in-use",url:""}]},
+  {id:"claudecontrol",name:"Claude Control",desc:"Run, view and steer Claude Code sessions from your phone (Claude Agent SDK). LIVE.",
+   status:"live",path:"C:\\Users\\socia\\claude-control",url:"http://localhost:7830",color:"#58a6ff",
+   tools:[{name:"Claude Agent SDK",cat:"API / Integration",status:"in-use",url:""},{name:"Node + WebSocket",cat:"Framework / Language",status:"in-use",url:""}]},
+  {id:"buildservice",name:"Build Service",desc:"Productized web-build freelance service (brand 'Anpi') — site/app live in 5 days, deposit up front.",
+   status:"active",path:"C:\\Users\\socia\\build-service",url:"",color:"#2ea043",
+   tools:[{name:"Cloudflare Pages",cat:"Hosting / Deploy",status:"in-use",url:""},{name:"Playwright",cat:"Build / Tooling",status:"in-use",url:""}]},
+  {id:"gestureblade",name:"GestureBlade",desc:"First-person 3D gesture-driven sword-fighting game for Android (Unity / C#).",
+   status:"progress",path:"C:\\Users\\socia\\GestureBlade",url:"",color:"#f85149",
+   tools:[{name:"Unity 6",cat:"Framework / Language",status:"in-use",url:""},{name:"C#",cat:"Framework / Language",status:"in-use",url:""},{name:"$N Multistroke",cat:"Build / Tooling",status:"in-use",url:""}]},
+  {id:"gentleplate",name:"Gentle Plate",desc:"Tkinter desktop diet planner — and the home of your vape / nicotine tracker.",
+   status:"active",path:"C:\\Users\\socia\\diet-planner",url:"",color:"#16b8a6",
+   tools:[{name:"Python / Tkinter",cat:"Framework / Language",status:"in-use",url:""}]},
+  {id:"projecttracker",name:"Project Tracker",desc:"This dashboard — projects, stacks, and one-click Session / Use launchers.",
+   status:"active",path:"C:\\Users\\socia\\project-tracker",url:"",color:"#6e7681",
+   tools:[{name:"Vanilla JS",cat:"Framework / Language",status:"in-use",url:""},{name:"Node launcher",cat:"Build / Tooling",status:"in-use",url:""}]},
 ];
 
 let data=load();
@@ -246,6 +277,8 @@ function render(){
         <button class="add-tool" onclick="openTool('${p.id}')">+ Add tool</button>
       </div>
       <div class="card-foot">
+        <button class="launch sess icon-btn" onclick="launch('session','${p.id}',this)" title="Open & run this project's Claude session in Terminal Bridge">▶ Session</button>
+        <button class="launch use icon-btn" onclick="launch('use','${p.id}',this)" title="Launch everything needed to actually use this project">🚀 Use</button>
         <button class="ghost icon-btn" onclick="openProject('${p.id}')">✎ Edit</button>
       </div>`;
     root.appendChild(card);
@@ -347,7 +380,49 @@ function importData(e){
 document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{if(e.target===o)o.classList.remove("show");}));
 document.addEventListener("keydown",e=>{if(e.key==="Escape")document.querySelectorAll(".overlay").forEach(o=>o.classList.remove("show"));});
 
+// ---- Merge in any built-in projects the user is missing (by path; never overwrites) ----
+function syncDefaults(){
+  const have=new Set(data.map(p=>(p.path||"").replace(/\//g,"\\").replace(/\\+$/,"").toLowerCase()));
+  let added=0;
+  SEED.forEach(s=>{
+    const key=(s.path||"").replace(/\//g,"\\").replace(/\\+$/,"").toLowerCase();
+    if(key && !have.has(key)){ data.push({...structuredClone(s),id:uid()}); added++; }
+  });
+  if(added){ save(); toast("✓ Added "+added+" project"+(added>1?"s":"")+" with Session / Use buttons.","ok"); }
+  else toast("You already have every built-in project.","ok");
+}
+
+// ---- Launcher buttons (talk to launcher-server.js on :7795) ----
+const LAUNCHER="http://127.0.0.1:7795";
+let toastTimer=null;
+function toast(msg,kind){
+  let t=document.getElementById("toast");
+  if(!t){t=document.createElement("div");t.id="toast";t.className="toast";document.body.appendChild(t);}
+  t.className="toast "+(kind||"");t.textContent=msg;
+  requestAnimationFrame(()=>t.classList.add("show"));
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),kind==="err"?7000:5000);
+}
+async function launch(kind,id,btn){
+  const p=data.find(x=>x.id===id);if(!p)return;
+  if(!p.path){toast("Add a local path to this project first (✎ Edit).","err");return;}
+  const label=btn.textContent;btn.disabled=true;btn.textContent=kind==="session"?"▶ …":"🚀 …";
+  try{
+    const r=await fetch(LAUNCHER+"/api/"+kind,{method:"POST",
+      body:JSON.stringify({path:p.path,name:p.name,url:p.url||""})}); // text/plain body = no CORS preflight
+    const j=await r.json();
+    toast((j.ok?"✓ ":"✕ ")+(j.message||(j.ok?"Done.":"Failed.")),j.ok?"ok":"err");
+  }catch(e){
+    document.getElementById("backendBanner").classList.add("show");
+    toast("Launcher isn't running — double-click 'Launch Project Tracker.bat', then try again.","err");
+  }finally{btn.disabled=false;btn.textContent=label;}
+}
+async function checkBackend(){
+  try{const r=await fetch(LAUNCHER+"/api/health",{cache:"no-store"});if(r.ok){document.getElementById("backendBanner").classList.remove("show");return;}}catch(e){}
+  document.getElementById("backendBanner").classList.add("show");
+}
+
 render();
+checkBackend();
 </script>
 </body>
 </html>
